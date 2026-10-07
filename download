@@ -1,0 +1,14 @@
+# Secrets
+.streamlit/secrets.toml
+
+# Local state
+.mca_state.json
+.mca_snapshot.json
+
+# Python
+__pycache__/
+*.pyc
+
+# OS/editor
+.DS_Store
+.vscode/
