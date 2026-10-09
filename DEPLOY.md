@@ -1,31 +1,22 @@
-# Publicación rápida
+# Publicar Mi Semana MCA v3.1
 
-## A. GitHub
-1. Crea un repositorio llamado `mi-semana-mca`.
-2. Sube el contenido de esta carpeta, no el ZIP dentro del repositorio.
-3. No subas un archivo real `.streamlit/secrets.toml`.
+1. Sube estos archivos al repositorio GitHub.
+2. En Streamlit Community Cloud publica `app.py`.
+3. La app funciona inmediatamente en modo local de prueba.
 
-## B. Supabase
-1. Crea un proyecto.
-2. Ejecuta `supabase.sql` en **SQL Editor**.
-3. Copia `Project URL` y `service_role key` desde Project Settings > API.
+## Para sincronizar con Google Sheets
+1. Crea una hoja Google Sheets vacía.
+2. Copia el ID del documento (la parte entre `/d/` y `/edit` de su URL).
+3. Crea una cuenta de servicio en Google Cloud y habilita Google Sheets API y Google Drive API.
+4. Comparte la hoja con el correo `client_email` de esa cuenta de servicio como Editor.
+5. En Streamlit Cloud > App > Settings > Secrets pega el contenido de `.streamlit/secrets.toml.example`, reemplazando los valores.
+6. Reinicia la app.
 
-## C. Streamlit Community Cloud
-1. New app > selecciona el repositorio `mi-semana-mca`.
-2. Main file path: `app.py`.
-3. Advanced settings > Secrets:
+La app crea automáticamente dos pestañas técnicas en el Google Sheet:
+- `_app_state`
+- `_pdf_snapshots`
 
-```toml
-SUPABASE_URL = "https://TU-PROYECTO.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY = "TU_SERVICE_ROLE_KEY"
-```
+No las borres. Son las que permiten que celular y PC compartan la misma información.
 
-4. Deploy.
-5. Abre la URL en celular y PC. Ambos verán los mismos datos.
-
-## Flujo de uso
-1. Descarga manualmente el PDF desde MCA.
-2. Cárgalo en **Actualizar desde MyWork**.
-3. Revisa la alerta de cambios.
-4. Presiona **Aplicar este PDF y guardar cambios**.
-5. La app conserva planificación, checks, km y gastos anteriores.
+## Excel
+En la pestaña “Resumen” puedes descargar un Excel de la semana seleccionada.
