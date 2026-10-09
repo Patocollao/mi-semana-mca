@@ -121,8 +121,12 @@ state=st.session_state.state
 
 st.title('📅 Mi Semana MCA')
 st.caption('Carga manual del PDF de MyWork · comparación automática · sincronización entre celular y PC')
-if store.mode=='supabase': st.success('☁️ Sincronización activa con Supabase', icon='✅')
-else: st.info('Modo local de prueba. Para sincronizar celular y PC configura Supabase en Streamlit Secrets.', icon='💾')
+if store.mode=='google_sheets':
+    st.success('☁️ Datos sincronizados en Google Sheets', icon='✅')
+elif store.mode=='supabase':
+    st.success('☁️ Sincronización activa con Supabase', icon='✅')
+else:
+    st.info('Modo local de prueba. Para compartir los mismos datos entre celular y PC configura Google Sheets o Supabase.', icon='💾')
 
 # Upload / compare
 with st.container(border=True):
@@ -200,29 +204,62 @@ plan_tab, expense_tab, summary_tab, history_tab = st.tabs(['📅 Semana','🚗 K
 
 with plan_tab:
     day_options=DAYS+['Sin asignar']
-    for day in day_options:
-        items=[v for v in week_vis if v.get('day','Sin asignar')==day]
-        items.sort(key=lambda v:(v.get('order',0),v['store']))
-        if day=='Sin asignar' and not items: continue
-        total=sum(v['hours'] for v in items)
-        st.markdown(f'### {day} · {total:.1f} h')
-        if not items:
-            st.caption('Sin visitas')
-            continue
-        for v in items:
-            with st.container(border=True):
-                left,right=st.columns([4,1])
-                with left:
-                    done=st.checkbox(f"{v['store']} — {v['hours']:.1f} h", value=bool(v.get('done')), key='done_'+v['visit_key'])
-                    st.caption(v['address'])
-                    st.caption(f"Estado MCA: {v['status']}")
-                with right:
-                    new_day=st.selectbox('Día',day_options,index=day_options.index(v.get('day','Sin asignar')),key='day_'+v['visit_key'],label_visibility='collapsed')
-                notes=st.text_input('Nota',value=v.get('notes',''),key='note_'+v['visit_key'],placeholder='Nota opcional',label_visibility='collapsed')
-                if done!=v.get('done') or new_day!=v.get('day') or notes!=v.get('notes',''):
-                    v['done']=done; v['day']=new_day; v['notes']=notes
-                    store.save_state(state)
+    unassigned=[v for v in week_vis if v.get('day','Sin asignar')=='Sin asignar']
+    visible_days=DAYS + (['Sin asignar'] if unassigned else [])
 
+    # La semana se muestra por pestañas, como en la primera versión.
+    day_tabs=st.tabs([
+        ('📌 ' if d=='Sin asignar' else '') + d
+        for d in visible_days
+    ])
+
+    for day, day_tab in zip(visible_days, day_tabs):
+        with day_tab:
+            items=[v for v in week_vis if v.get('day','Sin asignar')==day]
+            items.sort(key=lambda v:(v.get('order',0),v['store']))
+            total=sum(v['hours'] for v in items)
+            done_day=sum(v['hours'] for v in items if v.get('done'))
+
+            k1,k2,k3=st.columns(3)
+            k1.metric('Horas del día',f'{total:.1f}')
+            k2.metric('Realizadas',f'{done_day:.1f}')
+            k3.metric('Visitas',len(items))
+
+            if not items:
+                st.info('No hay visitas asignadas a este día.')
+                continue
+
+            for v in items:
+                with st.container(border=True):
+                    left,right=st.columns([4,1])
+                    with left:
+                        done=st.checkbox(
+                            f"{v['store']} — {v['hours']:.1f} h",
+                            value=bool(v.get('done')),
+                            key='done_'+v['visit_key']
+                        )
+                        st.caption(v['address'])
+                        st.caption(f"Estado MCA: {v['status']}")
+                    with right:
+                        new_day=st.selectbox(
+                            'Mover a',
+                            day_options,
+                            index=day_options.index(v.get('day','Sin asignar')),
+                            key='day_'+v['visit_key']
+                        )
+
+                    notes=st.text_input(
+                        'Nota',
+                        value=v.get('notes',''),
+                        key='note_'+v['visit_key'],
+                        placeholder='Nota opcional'
+                    )
+
+                    if done!=v.get('done') or new_day!=v.get('day') or notes!=v.get('notes',''):
+                        v['done']=done
+                        v['day']=new_day
+                        v['notes']=notes
+                        store.save_state(state)
 with expense_tab:
     st.subheader('Registro diario')
     day=st.selectbox('Día a registrar',DAYS,key='expense_day')
@@ -265,7 +302,18 @@ with summary_tab:
     r4.metric('Reserva impuestos',f'${income*tax/100:,.2f}')
     st.caption('La reserva para impuestos es una provisión personal, no una determinación fiscal de deducibilidad.')
     xlsx=make_excel(state,selected)
-    st.download_button('⬇️ Descargar Excel de esta semana',data=xlsx,file_name=f"Mi_Semana_MCA_{selected.split('|')[0]}.xlsx",mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',use_container_width=True)
+    st.download_button(
+        '⬇️ Descargar Excel de esta semana',
+        data=xlsx,
+        file_name=f"Mi_Semana_MCA_{selected.split('|')[0]}.xlsx",
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        use_container_width=True
+    )
+    if store.mode=='google_sheets':
+        st.success('Google Sheets está funcionando como almacenamiento central: lo que guardes en el celular queda disponible también en el PC.')
+        st.caption('El Excel es una copia descargable de la semana seleccionada.')
+    else:
+        st.caption('El Excel se genera con la información actual. Si quieres usar Google Sheets como almacenamiento central, configura GOOGLE_SHEET_ID y la cuenta de servicio en Streamlit Secrets.')
 
 with history_tab:
     hist=store.history(20)
